@@ -57,6 +57,18 @@ function ScreenShareIcon() {
   );
 }
 
+function ScreenShareStopIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <line x1="8" x2="16" y1="21" y2="21" />
+      <line x1="12" x2="12" y1="17" y2="21" />
+      <line x1="6" x2="18" y1="6" y2="18" />
+      <line x1="18" x2="6" y1="6" y2="18" />
+    </svg>
+  );
+}
+
 function ChatIcon({ unread }: { unread: boolean }) {
   return (
     <div className="relative">
@@ -94,6 +106,7 @@ function LeaveIcon() {
 
 export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false, screenShareDisabled = false, hovered = false, onToggleMic, onToggleCamera, onToggleScreenShare }: ControlBarProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showScreenShareConfirm, setShowScreenShareConfirm] = useState(false);
 
   const iconButtonClass =
     "flex items-center justify-center w-11 h-11 rounded-full bg-white/80 backdrop-blur-md shadow-sm border border-gray-200/50 text-gray-600 transition-all hover:bg-white hover:shadow-md hover:text-gray-900";
@@ -106,6 +119,19 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
 
   const leaveButtonClass =
     "flex items-center justify-center w-11 h-11 rounded-full bg-red-500 backdrop-blur-md shadow-sm text-white transition-all hover:bg-red-600 hover:shadow-md";
+
+  const handleScreenShareClick = () => {
+    if (screenSharing) {
+      setShowScreenShareConfirm(true);
+    } else {
+      onToggleScreenShare();
+    }
+  };
+
+  const confirmStopScreenShare = () => {
+    setShowScreenShareConfirm(false);
+    onToggleScreenShare();
+  };
 
   return (
     <>
@@ -139,11 +165,11 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
 
         <motion.button
           whileTap={{ scale: screenShareDisabled ? 1 : 0.93 }}
-          onClick={screenShareDisabled ? undefined : onToggleScreenShare}
+          onClick={screenShareDisabled ? undefined : handleScreenShareClick}
           className={screenShareDisabled ? disabledButtonClass : screenSharing ? activeButtonClass : iconButtonClass}
           title={screenShareDisabled ? "Someone else is presenting" : screenSharing ? "Stop sharing" : "Share screen"}
         >
-          <ScreenShareIcon />
+          {screenSharing ? <ScreenShareStopIcon /> : <ScreenShareIcon />}
         </motion.button>
 
         <div className="w-px h-6 bg-gray-300/50 mx-1" />
@@ -212,6 +238,47 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
                 className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-600"
               >
                 Leave
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Stop screen share confirmation */}
+      {showScreenShareConfirm && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setShowScreenShareConfirm(false)}
+          />
+          <motion.div
+            className="relative z-10 rounded-2xl bg-white p-6 shadow-xl w-80 text-center"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Stop sharing?
+            </h3>
+            <p className="text-sm text-gray-500 mb-5">
+              Are you sure you want to stop sharing your screen?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowScreenShareConfirm(false)}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStopScreenShare}
+                className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                Stop sharing
               </button>
             </div>
           </motion.div>

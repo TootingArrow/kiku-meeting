@@ -274,27 +274,6 @@ function MeetingContent({
       {/* Screen Share Active Layout - Keynote Mode */}
       {someoneIsSharing && (
         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-white pb-36 pt-20 px-6">
-          {localParticipant?.isScreenShareEnabled && (
-            <motion.button
-              className="absolute top-5 right-5 z-30 flex items-center gap-2 rounded-full bg-gray-900/80 backdrop-blur-md px-4 py-2 text-xs font-medium text-white shadow-lg hover:bg-gray-900 transition-colors"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              onClick={() => {
-                if (localParticipant?.isScreenShareEnabled) {
-                  localParticipant.setScreenShareEnabled(false);
-                }
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" x2="9" y1="12" y2="12" />
-              </svg>
-              Exit presentation
-            </motion.button>
-          )}
-
           {/* Top row participants - extra bottom padding so names don't overlap */}
           <div className="flex items-center justify-center gap-10 mb-6 pb-10">
             <AnimatePresence>

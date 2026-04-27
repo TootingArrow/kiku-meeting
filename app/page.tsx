@@ -40,15 +40,6 @@ function EarLogo() {
   );
 }
 
-function generateMeetingCode() {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const part = () =>
-    Array.from({ length: 3 }, () =>
-      chars.charAt(Math.floor(Math.random() * chars.length))
-    ).join("");
-  return `${part()}-${part()}-${part()}`;
-}
-
 function shakeAnimation(isShaking: boolean) {
   return isShaking
     ? { x: [-8, 8, -8, 8, -6, 6, -4, 4, 0] }
@@ -97,13 +88,24 @@ export default function Home() {
     setActiveModal("join");
   };
 
-  const openCreate = () => {
+  const openCreate = async () => {
     if (!name.trim()) {
       triggerNameError();
       return;
     }
-    setMeetingCode(generateMeetingCode());
-    setActiveModal("create");
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/rooms", { method: "POST" });
+      const data = await res.json();
+      if (data.roomId) {
+        setMeetingCode(data.roomId);
+        setActiveModal("create");
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const closeModal = () => {
@@ -123,18 +125,9 @@ export default function Home() {
     }
   };
 
-  const handleStart = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/rooms", { method: "POST" });
-      const data = await res.json();
-      if (data.roomId) {
-        router.push(`/room/${data.roomId}?name=${encodeURIComponent(name.trim())}`);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
+  const handleStart = () => {
+    if (meetingCode) {
+      router.push(`/room/${meetingCode}?name=${encodeURIComponent(name.trim())}`);
     }
   };
 
@@ -201,11 +194,12 @@ export default function Home() {
               Join Meeting
             </motion.button>
             <motion.button
-              whileTap={{ scale: 0.93 }}
+              whileTap={{ scale: isLoading ? 1 : 0.93 }}
               onClick={openCreate}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50"
+              disabled={isLoading}
+              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-60"
             >
-              Create Meeting
+              {isLoading && activeModal === null ? "Creating..." : "Create Meeting"}
             </motion.button>
           </div>
         </motion.div>
