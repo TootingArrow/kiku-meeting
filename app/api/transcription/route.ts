@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getGroqClient } from "@/lib/groq";
 
+const MAX_AUDIO_SIZE_MB = 25;
+const ALLOWED_AUDIO_TYPES = ["audio/webm", "audio/mp4", "audio/mpeg", "audio/wav", "audio/ogg", "audio/mp3"];
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -14,10 +17,31 @@ export async function POST(request: Request) {
       );
     }
 
+    if (typeof speaker !== "string" || speaker.trim().length === 0 || speaker.length > 100) {
+      return NextResponse.json(
+        { error: "Invalid speaker name" },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_AUDIO_TYPES.includes(audio.type)) {
+      return NextResponse.json(
+        { error: `Unsupported audio type: ${audio.type}` },
+        { status: 400 }
+      );
+    }
+
+    if (audio.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
+      return NextResponse.json(
+        { error: `Audio file too large. Max ${MAX_AUDIO_SIZE_MB}MB.` },
+        { status: 413 }
+      );
+    }
+
     const buffer = Buffer.from(await audio.arrayBuffer());
 
     const transcription = await getGroqClient().audio.transcriptions.create({
-      file: new File([buffer], "audio.webm", { type: "audio/webm" }),
+      file: new File([buffer], "audio.webm", { type: audio.type }),
       model: "whisper-large-v3-turbo",
       response_format: "verbose_json",
     });
@@ -30,7 +54,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ text });
-  } catch {
-    return NextResponse.json({ text: null });
+  } catch (error) {
+    console.error("Transcription error:", error);
+    const message = error instanceof Error ? error.message : "Transcription failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

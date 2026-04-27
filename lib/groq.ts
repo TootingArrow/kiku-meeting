@@ -6,6 +6,7 @@ export function getGroqClient() {
   if (!groqInstance) {
     groqInstance = new Groq({
       apiKey: process.env.GROQ_API_KEY,
+      timeout: 30000, // 30 seconds
     });
   }
   return groqInstance;

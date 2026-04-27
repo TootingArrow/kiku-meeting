@@ -41,10 +41,12 @@ function EarLogo() {
 }
 
 function generateMeetingCode() {
-  const parts = Array.from({ length: 3 }, () =>
-    Math.random().toString(36).substring(2, 5)
-  );
-  return parts.join("-");
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const part = () =>
+    Array.from({ length: 3 }, () =>
+      chars.charAt(Math.floor(Math.random() * chars.length))
+    ).join("");
+  return `${part()}-${part()}-${part()}`;
 }
 
 function shakeAnimation(isShaking: boolean) {

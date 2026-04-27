@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import fs from "fs";
 import path from "path";
 
-const ROOMS_FILE = "/tmp/rooms.json";
+const ROOMS_FILE = process.env.ROOMS_FILE || path.join(/*turbopackIgnore: true*/ process.cwd(), ".data", "rooms.json");
 
 export type Room = {
   roomId: string;
@@ -21,12 +21,26 @@ function loadRooms(): Room[] {
 
 function saveRooms(rooms: Room[]) {
   fs.mkdirSync(path.dirname(ROOMS_FILE), { recursive: true });
-  fs.writeFileSync(ROOMS_FILE, JSON.stringify(rooms, null, 2));
+  fs.writeFileSync(ROOMS_FILE, JSON.stringify(rooms, null, 2), { mode: 0o600 });
+}
+
+function roomIdExists(roomId: string, rooms: Room[]): boolean {
+  return rooms.some((r) => r.roomId === roomId);
 }
 
 export function createRoom(createdBy: string): string {
-  const roomId = nanoid(10);
   const rooms = loadRooms();
+  let roomId: string;
+  let attempts = 0;
+  do {
+    roomId = nanoid(10);
+    attempts++;
+  } while (roomIdExists(roomId, rooms) && attempts < 10);
+
+  if (roomIdExists(roomId, rooms)) {
+    throw new Error("Failed to generate unique room ID");
+  }
+
   rooms.push({ roomId, createdBy, createdAt: Date.now() });
   saveRooms(rooms);
   return roomId;

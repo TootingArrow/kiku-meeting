@@ -2,13 +2,40 @@ import { NextResponse } from "next/server";
 import { getGroqClient } from "@/lib/groq";
 import type { TranscriptLine, CallSummary } from "@/types";
 
+function createFallbackSummary(
+  duration: string,
+  participants: string[]
+): CallSummary {
+  return {
+    title: "Summary unavailable",
+    date: new Date().toISOString().split("T")[0],
+    duration,
+    participants,
+    keyPoints: [],
+    decisions: [],
+    actionItems: [],
+    homework: [],
+  };
+}
+
 export async function POST(request: Request) {
+  let duration = "";
+  let participants: string[] = [];
+
   try {
-    const { transcript, participants, duration }: {
-      transcript: TranscriptLine[];
-      participants: string[];
-      duration: string;
+    const body: {
+      transcript?: TranscriptLine[];
+      participants?: string[];
+      duration?: string;
     } = await request.json();
+
+    const transcript = Array.isArray(body.transcript) ? body.transcript : [];
+    participants = Array.isArray(body.participants) ? body.participants : [];
+    duration = typeof body.duration === "string" ? body.duration : "";
+
+    if (transcript.length === 0) {
+      return NextResponse.json(createFallbackSummary(duration, participants));
+    }
 
     const formattedTranscript = transcript
       .map((line) => {
@@ -60,16 +87,7 @@ Rules:
     try {
       parsed = JSON.parse(content);
     } catch {
-      return NextResponse.json({
-        title: "Summary unavailable",
-        date: new Date().toISOString().split("T")[0],
-        duration,
-        participants,
-        keyPoints: [],
-        decisions: [],
-        actionItems: [],
-        homework: [],
-      } as CallSummary);
+      return NextResponse.json(createFallbackSummary(duration, participants));
     }
 
     const summary: CallSummary = {
@@ -86,15 +104,6 @@ Rules:
     return NextResponse.json(summary);
   } catch (error) {
     console.error("Summary error:", error);
-    return NextResponse.json({
-      title: "Summary unavailable",
-      date: new Date().toISOString().split("T")[0],
-      duration: "",
-      participants: [],
-      keyPoints: [],
-      decisions: [],
-      actionItems: [],
-      homework: [],
-    } as CallSummary);
+    return NextResponse.json(createFallbackSummary(duration, participants));
   }
 }

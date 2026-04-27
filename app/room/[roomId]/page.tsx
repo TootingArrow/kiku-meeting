@@ -449,10 +449,22 @@ function BottomBar({
   );
 }
 
+function sanitizeRoomId(id: string): string | null {
+  if (!id || typeof id !== "string") return null;
+  const cleaned = id.trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 128);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function sanitizeName(name: string): string {
+  if (!name || typeof name !== "string") return "Anonymous";
+  return name.trim().slice(0, 100) || "Anonymous";
+}
+
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userName = searchParams.get("name") || "Anonymous";
+  const rawName = searchParams.get("name") || "Anonymous";
+  const userName = sanitizeName(rawName);
 
   const [roomId, setRoomId] = useState<string>("");
   const [token, setToken] = useState<string>("");
@@ -468,7 +480,14 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    params.then((p) => setRoomId(p.roomId));
+    params.then((p) => {
+      const id = sanitizeRoomId(p.roomId);
+      if (id) {
+        setRoomId(id);
+      } else {
+        setError("Invalid room ID");
+      }
+    });
   }, [params]);
 
   const fetchToken = useCallback(async () => {
