@@ -107,7 +107,7 @@ function ScreenShareView({ sharer }: { sharer: { livekitParticipant?: import("li
   );
 }
 
-function MeetingTimer({ startTime, hovered = false }: { startTime: number; hovered?: boolean }) {
+function MeetingTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -119,8 +119,8 @@ function MeetingTimer({ startTime, hovered = false }: { startTime: number; hover
 
   return (
     <div
-      className="flex items-center justify-center h-11 px-4 rounded-full backdrop-blur-xl shadow-lg border border-white/40 transition-colors"
-      style={{ backgroundColor: hovered ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)" }}
+      className="flex items-center justify-center h-11 px-4 rounded-full backdrop-blur-xl shadow-lg border border-white/40"
+      style={{ backgroundColor: "rgba(255,255,255,0.55)" }}
     >
       <span className="font-mono text-sm text-gray-600 tracking-wider">
         {formatDuration(elapsed)}
@@ -422,7 +422,7 @@ function BottomBar({
         />
       </div>
       <div className="pointer-events-auto">
-        <MeetingTimer startTime={startTime} hovered={hovered} />
+        <MeetingTimer startTime={startTime} />
       </div>
     </div>
   );

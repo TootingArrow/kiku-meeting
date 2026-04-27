@@ -32,8 +32,8 @@ const DEFAULT_SIZE = 270;
 
 function MicOffBadge() {
   return (
-    <div className="absolute bottom-3 left-3 z-20 w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center shadow-sm">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <div className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center shadow-sm">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="1" x2="23" y1="1" y2="23" />
         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
       </svg>
@@ -41,14 +41,13 @@ function MicOffBadge() {
   );
 }
 
-function MicOffOverlay() {
+function CameraOffBadge() {
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-black/15">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+    <div className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center shadow-sm">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="1" x2="23" y1="1" y2="23" />
-        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-        <line x1="12" x2="12" y1="19" y2="22" />
+        <polygon points="23 7 16 12 23 17 23 7" />
+        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
       </svg>
     </div>
   );
@@ -257,32 +256,11 @@ export function VideoTile({
               </span>
             )}
 
-            {/* Camera off overlay */}
-            {!participant.cameraOn && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-black/20">
-                <svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="opacity-80"
-                >
-                  <line x1="1" x2="23" y1="1" y2="23" />
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-            )}
-
-            {/* Mic muted overlay - prominent when camera is still on */}
-            {!participant.micOn && participant.cameraOn && <MicOffOverlay />}
-
-            {/* Mic muted badge */}
-            {!participant.micOn && <MicOffBadge />}
+            {/* Status badges — mic + camera off shown side by side */}
+            <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5">
+              {!participant.micOn && <MicOffBadge />}
+              {!participant.cameraOn && <CameraOffBadge />}
+            </div>
 
             {/* Speaking indicator dot (hidden on small sidebar tiles) */}
             {isActiveSpeaker && !isSidebar && (
