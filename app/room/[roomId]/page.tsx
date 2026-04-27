@@ -120,7 +120,7 @@ function MeetingTimer({ startTime }: { startTime: number }) {
   return (
     <div
       className="flex items-center justify-center h-11 px-4 rounded-full backdrop-blur-xl shadow-lg border border-white/40"
-      style={{ backgroundColor: "rgba(255,255,255,0.55)" }}
+      style={{ backgroundColor: "rgba(255,255,255,0.75)" }}
     >
       <span className="font-mono text-sm text-gray-600 tracking-wider">
         {formatDuration(elapsed)}

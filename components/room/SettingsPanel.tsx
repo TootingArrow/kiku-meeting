@@ -256,8 +256,8 @@ export function SettingsPanel({ userName, onUserNameChange, hovered = false }: S
 
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-xl shadow-lg border border-white/30 text-gray-600 transition-all hover:text-gray-900"
-        style={{ backgroundColor: hovered ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)" }}
+        className="flex items-center justify-center w-11 h-11 rounded-full backdrop-blur-xl shadow-lg border border-white/40 text-gray-600 transition-all hover:text-gray-900"
+        style={{ backgroundColor: hovered ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.55)" }}
         title="Settings"
       >
         <SettingsIcon />

@@ -141,8 +141,8 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
         transition={{ type: "spring", stiffness: 300, damping: 30, delay: 0.3 }}
       >
         <div
-          className="flex items-center gap-2 rounded-full backdrop-blur-xl px-3 py-2 shadow-lg border border-white/30 transition-colors"
-          style={{ backgroundColor: hovered ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.10)" }}
+          className="flex items-center gap-2 rounded-full backdrop-blur-xl px-3 py-2 shadow-lg border border-white/40 transition-colors"
+          style={{ backgroundColor: hovered ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.55)" }}
         >
         <motion.button
           whileTap={{ scale: 0.93 }}
