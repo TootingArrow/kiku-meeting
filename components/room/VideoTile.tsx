@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Participant as LiveKitParticipant, Track } from "livekit-client";
 
 export interface Participant {
@@ -41,6 +41,19 @@ function MicOffBadge() {
   );
 }
 
+function MicOffOverlay() {
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-full bg-black/15">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+        <line x1="1" x2="23" y1="1" y2="23" />
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" x2="12" y1="19" y2="22" />
+      </svg>
+    </div>
+  );
+}
+
 export function VideoTile({
   participant,
   isSpeaking,
@@ -53,8 +66,16 @@ export function VideoTile({
   const [micPulse, setMicPulse] = useState(false);
   const [hasHadVideo, setHasHadVideo] = useState(false);
   const [trackVersion, setTrackVersion] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [videoNode, setVideoNode] = useState<HTMLVideoElement | null>(null);
+  const [audioNode, setAudioNode] = useState<HTMLAudioElement | null>(null);
+
+  const videoRef = useCallback((node: HTMLVideoElement | null) => {
+    setVideoNode(node);
+  }, []);
+
+  const audioRef = useCallback((node: HTMLAudioElement | null) => {
+    setAudioNode(node);
+  }, []);
 
   useEffect(() => {
     if (isSpeaking && participant.micOn) {
@@ -92,9 +113,9 @@ export function VideoTile({
     };
   }, [participant.livekitParticipant]);
 
-  // Attach/detach video track — re-runs when tracks change
+  // Attach/detach video track — re-runs when tracks change or video element becomes available
   useEffect(() => {
-    const el = videoRef.current;
+    const el = videoNode;
     const lk = participant.livekitParticipant;
     if (!el || !lk) return;
 
@@ -107,11 +128,11 @@ export function VideoTile({
         videoTrack.detach(el);
       };
     }
-  }, [participant.livekitParticipant, trackVersion]);
+  }, [participant.livekitParticipant, trackVersion, videoNode]);
 
-  // Attach/detach audio track (remote only) — re-runs when tracks change
+  // Attach/detach audio track (remote only) — re-runs when tracks change or audio element becomes available
   useEffect(() => {
-    const el = audioRef.current;
+    const el = audioNode;
     const lk = participant.livekitParticipant;
     if (!el || !lk || participant.isLocal) return;
 
@@ -124,7 +145,7 @@ export function VideoTile({
         audioTrack.detach(el);
       };
     }
-  }, [participant.livekitParticipant, participant.isLocal, trackVersion]);
+  }, [participant.livekitParticipant, participant.isLocal, trackVersion, audioNode]);
 
   const isActiveSpeaker = isSpeaking && participant.micOn;
   const showVideo = participant.cameraOn || hasHadVideo;
@@ -256,6 +277,9 @@ export function VideoTile({
                 </svg>
               </div>
             )}
+
+            {/* Mic muted overlay - prominent when camera is still on */}
+            {!participant.micOn && participant.cameraOn && <MicOffOverlay />}
 
             {/* Mic muted badge */}
             {!participant.micOn && <MicOffBadge />}

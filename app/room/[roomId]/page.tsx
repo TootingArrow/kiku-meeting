@@ -94,7 +94,7 @@ function ScreenShareView({ sharer }: { sharer: { livekitParticipant?: import("li
         track.detach(el);
       };
     }
-  }, [sharer]);
+  }, [sharer.livekitParticipant]);
 
   return (
     <video
