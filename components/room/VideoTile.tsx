@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Participant as LiveKitParticipant, Track } from "livekit-client";
+import { MicIcon } from "./ControlBar";
 
 export interface Participant {
   id: string;
@@ -30,25 +31,31 @@ interface VideoTileProps {
 
 const DEFAULT_SIZE = 270;
 
-function MicOffBadge() {
+function StatusOverlay({ micOff, cameraOff, color, initial }: { micOff: boolean; cameraOff: boolean; color: string; initial: string }) {
   return (
-    <div className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center shadow-sm">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="1" x2="23" y1="1" y2="23" />
-        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-      </svg>
-    </div>
-  );
-}
-
-function CameraOffBadge() {
-  return (
-    <div className="w-8 h-8 rounded-full bg-red-500/90 flex items-center justify-center shadow-sm">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="1" x2="23" y1="1" y2="23" />
-        <polygon points="23 7 16 12 23 17 23 7" />
-        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-      </svg>
+    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "rgba(0,0,0,0.30)",
+          backdropFilter: "blur(3px)",
+        }}
+      />
+      <div className="relative flex items-center gap-3">
+        {micOff && (
+          <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center text-white">
+            <MicIcon muted={true} />
+          </div>
+        )}
+        {cameraOff && (
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-lg"
+            style={{ backgroundColor: color }}
+          >
+            {initial}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -64,20 +71,46 @@ export function VideoTile({
   const BASE_SIZE = size || DEFAULT_SIZE;
   const [micPulse, setMicPulse] = useState(false);
   const [trackVersion, setTrackVersion] = useState(0);
+  const [hasVideo, setHasVideo] = useState(false);
 
-  // Use ref for video element so we can attach/detach reliably without
-  // triggering re-renders that would clear the frozen frame.
+  // Refs for manual video track management without triggering re-renders
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const videoTrackRef = useRef<any>(null);
+  const attachedTrackSidRef = useRef<string | null>(null);
 
-  const videoRef = (node: HTMLVideoElement | null) => {
-    videoElRef.current = node;
-  };
-
-  const audioRef = (node: HTMLAudioElement | null) => {
+  const audioRef = useCallback((node: HTMLAudioElement | null) => {
     audioElRef.current = node;
-  };
+  }, []);
+
+  const tryAttachVideo = useCallback((el: HTMLVideoElement, track: any) => {
+    const sid = track?.sid ?? null;
+    if (sid && sid === attachedTrackSidRef.current) return; // already attached
+
+    // Detach previous track
+    if (videoTrackRef.current && attachedTrackSidRef.current) {
+      videoTrackRef.current.detach(el);
+    }
+
+    if (track) {
+      track.attach(el);
+      videoTrackRef.current = track;
+      attachedTrackSidRef.current = sid;
+      setHasVideo(true);
+    } else {
+      videoTrackRef.current = null;
+      attachedTrackSidRef.current = null;
+      setHasVideo(false);
+    }
+  }, []);
+
+  const videoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoElRef.current = node;
+    // Try immediate attachment if both element and track are ready
+    if (node && videoTrackRef.current) {
+      tryAttachVideo(node, videoTrackRef.current);
+    }
+  }, [tryAttachVideo]);
 
   useEffect(() => {
     if (isSpeaking && participant.micOn) {
@@ -87,7 +120,7 @@ export function VideoTile({
     }
   }, [isSpeaking, participant.micOn]);
 
-  // Listen for track publish/unpublish events to re-attach tracks
+  // Listen for track publish/unpublish events
   useEffect(() => {
     const lk = participant.livekitParticipant;
     if (!lk) return;
@@ -109,23 +142,43 @@ export function VideoTile({
     };
   }, [participant.livekitParticipant]);
 
-  // Attach video track when it becomes available — NEVER detach here.
-  // Detaching clears the video element and destroys the frozen last frame.
+  // Sync video track — robust against race between element ref and track availability
   useEffect(() => {
     const el = videoElRef.current;
     const lk = participant.livekitParticipant;
     if (!el || !lk) return;
 
     const videoPub = lk.getTrackPublication(Track.Source.Camera);
-    const videoTrack = videoPub?.track;
+    const track = videoPub?.track;
+    tryAttachVideo(el, track);
+  }, [participant.livekitParticipant, trackVersion, tryAttachVideo]);
 
-    if (videoTrack && !videoTrackRef.current) {
-      videoTrack.attach(el);
-      videoTrackRef.current = videoTrack;
-    }
-  }, [participant.livekitParticipant, trackVersion]);
+  // Poll for video element readiness when track exists but element doesn't yet
+  useEffect(() => {
+    const lk = participant.livekitParticipant;
+    if (!lk) return;
 
-  // Detach video track ONLY when this tile unmounts
+    const videoPub = lk.getTrackPublication(Track.Source.Camera);
+    const track = videoPub?.track;
+    if (!track) return;
+
+    if (videoElRef.current) return; // element already ready
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const el = videoElRef.current;
+      if (el) {
+        tryAttachVideo(el, track);
+        clearInterval(interval);
+      }
+      if (++attempts > 30) {
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [participant.livekitParticipant, trackVersion, tryAttachVideo]);
+
+  // Detach video track on unmount
   useEffect(() => {
     return () => {
       const el = videoElRef.current;
@@ -154,7 +207,9 @@ export function VideoTile({
   }, [participant.livekitParticipant, participant.isLocal, trackVersion]);
 
   const isActiveSpeaker = isSpeaking && participant.micOn;
-  const showInitials = !participant.cameraOn && !videoTrackRef.current;
+  const showInitials = !hasVideo && !participant.cameraOn;
+  const showOverlay = !participant.cameraOn || !participant.micOn;
+  const videoVisible = hasVideo || participant.cameraOn;
 
   return (
     <motion.div
@@ -197,6 +252,7 @@ export function VideoTile({
       >
         <motion.div
           className="relative"
+          style={{ borderRadius: "50%" }}
           animate={{
             scale: isActiveSpeaker ? 1.12 : 1,
             boxShadow: isActiveSpeaker
@@ -208,7 +264,7 @@ export function VideoTile({
             boxShadow: { duration: 0.4, ease: "easeOut" },
           }}
         >
-          {/* Video circle — overflow hidden clips to circle */}
+          {/* Video circle */}
           <div
             className="relative flex items-center justify-center overflow-hidden"
             style={{
@@ -234,14 +290,14 @@ export function VideoTile({
               muted
               className="absolute inset-0 h-full w-full object-cover"
               style={{
-                opacity: participant.cameraOn || videoTrackRef.current ? 1 : 0,
-                filter: participant.cameraOn ? "none" : "grayscale(100%) brightness(0.75)",
+                opacity: videoVisible ? 1 : 0,
+                filter: participant.cameraOn ? "none" : "grayscale(100%) brightness(0.65)",
                 transition: "filter 0.5s ease, opacity 0.3s ease",
                 transform: participant.isLocal ? "scaleX(-1)" : "scaleX(1)",
               }}
             />
 
-            {/* Initials — only when camera was never on */}
+            {/* Initials — only when camera was never on and no track */}
             {showInitials && (
               <span
                 className="relative z-10 font-semibold text-white drop-shadow-lg select-none"
@@ -249,6 +305,16 @@ export function VideoTile({
               >
                 {participant.initials}
               </span>
+            )}
+
+            {/* Status overlay — translucent overlay for mic/camera off */}
+            {showOverlay && (
+              <StatusOverlay
+                micOff={!participant.micOn}
+                cameraOff={!participant.cameraOn}
+                color={participant.color}
+                initial={participant.name ? participant.name.charAt(0).toUpperCase() : "?"}
+              />
             )}
 
             {/* Speaking indicator dot (hidden on small sidebar tiles) */}
@@ -259,12 +325,6 @@ export function VideoTile({
                 transition={{ duration: 0.4 }}
               />
             )}
-          </div>
-
-          {/* Status badges — centered below the circle so they never get clipped */}
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-            {!participant.micOn && <MicOffBadge />}
-            {!participant.cameraOn && <CameraOffBadge />}
           </div>
 
           {/* Hidden audio element for remote participants */}

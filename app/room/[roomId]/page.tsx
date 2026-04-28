@@ -11,6 +11,7 @@ import {
 import { Track } from "livekit-client";
 import { VideoTile } from "@/components/room/VideoTile";
 import { ControlBar } from "@/components/room/ControlBar";
+import { ChatSidebar } from "@/components/room/ChatSidebar";
 import { DeviceTestModal } from "@/components/room/DeviceTestModal";
 import { SettingsPanel } from "@/components/room/SettingsPanel";
 import { LoadingScreen } from "@/components/room/LoadingScreen";
@@ -145,6 +146,8 @@ function MeetingContent({
   const { localParticipant } = useLocalParticipant();
   const [screenSharerId, setScreenSharerId] = useState<string | null>(null);
   const [copiedRoomId, setCopiedRoomId] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatWidth, setChatWidth] = useState(380);
 
   useEffect(() => {
     const sharer = participants.find((p) => p.isScreenShareEnabled);
@@ -175,6 +178,10 @@ function MeetingContent({
       // ignore
     }
   }, [roomId]);
+
+  const handleToggleChat = useCallback(() => {
+    setChatOpen((prev) => !prev);
+  }, []);
 
   const someoneIsSharing = screenSharerId !== null;
 
@@ -247,120 +254,143 @@ function MeetingContent({
 
   return (
     <>
-      {/* Room ID badge */}
-      <motion.button
-        onClick={handleCopyRoomId}
-        className="absolute top-5 left-5 z-30 rounded-full bg-white/80 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-gray-500 shadow-sm border border-gray-100 cursor-pointer hover:bg-white transition-colors"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        title="Click to copy"
+      {/* Main content area that smoothly shifts when sidebar opens */}
+      <motion.div
+        className="absolute inset-0 overflow-hidden"
+        animate={{
+          marginRight: chatOpen ? chatWidth : 0,
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 30,
+        }}
       >
-        {copiedRoomId ? "Copied!" : roomId}
-      </motion.button>
-
-      {/* Screen share banner */}
-      {someoneIsSharing && localParticipant?.isScreenShareEnabled && (
-        <motion.div
-          className="fixed top-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-lg"
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -50, opacity: 0 }}
+        {/* Room ID badge */}
+        <motion.button
+          onClick={handleCopyRoomId}
+          className="absolute top-5 left-5 z-30 rounded-full bg-white/80 backdrop-blur-md px-4 py-1.5 text-xs font-medium text-gray-500 shadow-sm border border-gray-100 cursor-pointer hover:bg-white transition-colors"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          title="Click to copy"
         >
-          You are sharing your screen
-        </motion.div>
-      )}
+          {copiedRoomId ? "Copied!" : roomId}
+        </motion.button>
 
-      {/* Screen Share Active Layout - Keynote Mode */}
-      {someoneIsSharing && (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-white pb-36 pt-20 px-6">
-          {/* Top row participants - extra bottom padding so names don't overlap */}
-          <div className="flex items-center justify-center gap-10 mb-6 pb-10">
+        {/* Screen share banner */}
+        {someoneIsSharing && localParticipant?.isScreenShareEnabled && (
+          <motion.div
+            className="fixed top-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-lg"
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+          >
+            You are sharing your screen
+          </motion.div>
+        )}
+
+        {/* Screen Share Active Layout - Keynote Mode */}
+        {someoneIsSharing && (
+          <div className="flex flex-col items-center justify-center min-h-screen w-full bg-white pb-36 pt-20 px-6">
+            {/* Top row participants - extra bottom padding so names don't overlap */}
+            <div className="flex items-center justify-center gap-10 mb-6 pb-10">
+              <AnimatePresence>
+                {allParticipants.slice(0, Math.ceil(allParticipants.length / 2)).map((participant, i) => (
+                  <VideoTile
+                    key={participant.id}
+                    participant={participant}
+                    isSpeaking={speakerId === participant.id}
+                    floatAnimation={SUBTLE_FLOAT_CONFIGS[i % SUBTLE_FLOAT_CONFIGS.length]}
+                    position={{ left: "0", top: "0" }}
+                    size={130}
+                    isSidebar
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Actual screen share container */}
+            <div className="w-full max-w-5xl aspect-video rounded-2xl bg-gray-900 border border-gray-800 shadow-xl flex items-center justify-center relative overflow-hidden">
+              {screenSharer ? (
+                <ScreenShareView sharer={screenSharer} />
+              ) : (
+                <div className="relative z-10 flex flex-col items-center gap-3 text-gray-400">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="20" height="14" x="2" y="3" rx="2" />
+                    <line x1="8" x2="16" y1="21" y2="21" />
+                    <line x1="12" x2="12" y1="17" y2="21" />
+                  </svg>
+                  <span className="text-sm font-medium">Waiting for screen share...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom row participants - extra top padding so names don't overlap */}
+            {allParticipants.length > Math.ceil(allParticipants.length / 2) && (
+              <div className="flex items-center justify-center gap-10 mt-6 pt-10">
+                <AnimatePresence>
+                  {allParticipants.slice(Math.ceil(allParticipants.length / 2)).map((participant, i) => {
+                    const idx = i + Math.ceil(allParticipants.length / 2);
+                    return (
+                      <VideoTile
+                        key={participant.id}
+                        participant={participant}
+                        isSpeaking={speakerId === participant.id}
+                        floatAnimation={SUBTLE_FLOAT_CONFIGS[idx % SUBTLE_FLOAT_CONFIGS.length]}
+                        position={{ left: "0", top: "0" }}
+                        size={130}
+                        isSidebar
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Normal floating layout */}
+        {!someoneIsSharing && (
+          <div className="absolute inset-0">
             <AnimatePresence>
-              {allParticipants.slice(0, Math.ceil(allParticipants.length / 2)).map((participant, i) => (
+              {allParticipants.map((participant, i) => (
                 <VideoTile
                   key={participant.id}
                   participant={participant}
                   isSpeaking={speakerId === participant.id}
-                  floatAnimation={SUBTLE_FLOAT_CONFIGS[i % SUBTLE_FLOAT_CONFIGS.length]}
-                  position={{ left: "0", top: "0" }}
-                  size={130}
-                  isSidebar
+                  floatAnimation={FLOAT_CONFIGS[i % FLOAT_CONFIGS.length]}
+                  position={positions[i]}
                 />
               ))}
             </AnimatePresence>
           </div>
+        )}
+        {/* Bottom bar: settings (left), controls (center), timer (right) */}
+        <BottomBar
+          userName={userName}
+          onUserNameChange={onUserNameChange}
+          startTime={startTime}
+          onLeave={() => router.push("/")}
+          micMuted={!localParticipant?.isMicrophoneEnabled}
+          cameraOff={!localParticipant?.isCameraEnabled}
+          screenSharing={localParticipant?.isScreenShareEnabled || false}
+          screenShareDisabled={someoneIsSharing && !localParticipant?.isScreenShareEnabled}
+          chatOpen={chatOpen}
+          onToggleMic={handleToggleMic}
+          onToggleCamera={handleToggleCamera}
+          onToggleScreenShare={handleOpenScreenShare}
+          onToggleChat={handleToggleChat}
+        />
+      </motion.div>
 
-          {/* Actual screen share container */}
-          <div className="w-full max-w-5xl aspect-video rounded-2xl bg-gray-900 border border-gray-800 shadow-xl flex items-center justify-center relative overflow-hidden">
-            {screenSharer ? (
-              <ScreenShareView sharer={screenSharer} />
-            ) : (
-              <div className="relative z-10 flex flex-col items-center gap-3 text-gray-400">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="20" height="14" x="2" y="3" rx="2" />
-                  <line x1="8" x2="16" y1="21" y2="21" />
-                  <line x1="12" x2="12" y1="17" y2="21" />
-                </svg>
-                <span className="text-sm font-medium">Waiting for screen share...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom row participants - extra top padding so names don't overlap */}
-          {allParticipants.length > Math.ceil(allParticipants.length / 2) && (
-            <div className="flex items-center justify-center gap-10 mt-6 pt-10">
-              <AnimatePresence>
-                {allParticipants.slice(Math.ceil(allParticipants.length / 2)).map((participant, i) => {
-                  const idx = i + Math.ceil(allParticipants.length / 2);
-                  return (
-                    <VideoTile
-                      key={participant.id}
-                      participant={participant}
-                      isSpeaking={speakerId === participant.id}
-                      floatAnimation={SUBTLE_FLOAT_CONFIGS[idx % SUBTLE_FLOAT_CONFIGS.length]}
-                      position={{ left: "0", top: "0" }}
-                      size={130}
-                      isSidebar
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Normal floating layout */}
-      {!someoneIsSharing && (
-        <div className="absolute inset-0">
-          <AnimatePresence>
-            {allParticipants.map((participant, i) => (
-              <VideoTile
-                key={participant.id}
-                participant={participant}
-                isSpeaking={speakerId === participant.id}
-                floatAnimation={FLOAT_CONFIGS[i % FLOAT_CONFIGS.length]}
-                position={positions[i]}
-              />
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* Bottom bar: settings (left), controls (center), timer (right) */}
-      <BottomBar
+      {/* Chat sidebar */}
+      <ChatSidebar
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
         userName={userName}
-        onUserNameChange={onUserNameChange}
-        startTime={startTime}
-        onLeave={() => router.push("/")}
-        micMuted={!localParticipant?.isMicrophoneEnabled}
-        cameraOff={!localParticipant?.isCameraEnabled}
-        screenSharing={localParticipant?.isScreenShareEnabled || false}
-        screenShareDisabled={someoneIsSharing && !localParticipant?.isScreenShareEnabled}
-        onToggleMic={handleToggleMic}
-        onToggleCamera={handleToggleCamera}
-        onToggleScreenShare={handleOpenScreenShare}
+        width={chatWidth}
+        onWidthChange={setChatWidth}
       />
     </>
   );
@@ -375,9 +405,11 @@ interface BottomBarProps {
   cameraOff: boolean;
   screenSharing?: boolean;
   screenShareDisabled?: boolean;
+  chatOpen?: boolean;
   onToggleMic: () => void;
   onToggleCamera: () => void;
   onToggleScreenShare: () => void;
+  onToggleChat: () => void;
 }
 
 function BottomBar({
@@ -389,15 +421,17 @@ function BottomBar({
   cameraOff,
   screenSharing = false,
   screenShareDisabled = false,
+  chatOpen = false,
   onToggleMic,
   onToggleCamera,
   onToggleScreenShare,
+  onToggleChat,
 }: BottomBarProps) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
-      className="fixed bottom-6 left-0 right-0 z-40 px-6 flex items-end justify-between pointer-events-none"
+      className="absolute bottom-6 left-0 right-0 z-40 px-6 flex items-end justify-between pointer-events-none"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -415,9 +449,11 @@ function BottomBar({
           cameraOff={cameraOff}
           screenSharing={screenSharing}
           screenShareDisabled={screenShareDisabled}
+          chatOpen={chatOpen}
           onToggleMic={onToggleMic}
           onToggleCamera={onToggleCamera}
           onToggleScreenShare={onToggleScreenShare}
+          onToggleChat={onToggleChat}
           hovered={hovered}
         />
       </div>

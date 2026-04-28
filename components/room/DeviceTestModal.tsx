@@ -10,6 +10,10 @@ interface MediaDeviceInfo {
   kind: "audioinput" | "audiooutput" | "videoinput";
 }
 
+function stripParenthetical(s: string): string {
+  return s.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
 interface DeviceTestModalProps {
   isOpen: boolean;
   userName: string;
@@ -27,6 +31,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
   const [micLevel, setMicLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
+  const [cameraReady, setCameraReady] = useState(false);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const animationRef = useRef<number>(0);
@@ -83,6 +88,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = mediaStream;
       setStream(mediaStream);
+      setCameraReady(mediaStream.getVideoTracks().length === 0);
       setError(null);
 
       if (videoRef.current) {
@@ -212,6 +218,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
                     autoPlay
                     playsInline
                     muted
+                    onLoadedData={() => setCameraReady(true)}
                     className="h-full w-full object-cover"
                     style={{ transform: "scaleX(-1)" }}
                   />
@@ -256,7 +263,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
                     )}
                     {cameraDevices.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label}
+                        {stripParenthetical(d.label)}
                       </option>
                     ))}
                   </select>
@@ -275,7 +282,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
                     )}
                     {micDevices.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label}
+                        {stripParenthetical(d.label)}
                       </option>
                     ))}
                   </select>
@@ -294,7 +301,7 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
                     )}
                     {speakerDevices.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label}
+                        {stripParenthetical(d.label)}
                       </option>
                     ))}
                   </select>
@@ -311,11 +318,12 @@ export function DeviceTestModal({ isOpen, userName, onJoin }: DeviceTestModalPro
                   Back to menu
                 </motion.button>
                 <motion.button
-                  whileTap={{ scale: 0.93 }}
-                  onClick={() => onJoin(selectedMic, selectedCamera)}
-                  className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  whileTap={{ scale: cameraReady || !stream || stream.getVideoTracks().length === 0 ? 0.93 : 1 }}
+                  onClick={cameraReady || !stream || stream.getVideoTracks().length === 0 ? () => onJoin(selectedMic, selectedCamera) : undefined}
+                  disabled={!cameraReady && stream !== null && stream.getVideoTracks().length > 0}
+                  className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Join meeting
+                  {!cameraReady && stream !== null && stream.getVideoTracks().length > 0 ? "Loading camera..." : "Join meeting"}
                 </motion.button>
               </div>
             </>

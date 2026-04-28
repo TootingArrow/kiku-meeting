@@ -10,12 +10,14 @@ interface ControlBarProps {
   screenSharing?: boolean;
   screenShareDisabled?: boolean;
   hovered?: boolean;
+  chatOpen?: boolean;
   onToggleMic: () => void;
   onToggleCamera: () => void;
   onToggleScreenShare: () => void;
+  onToggleChat: () => void;
 }
 
-function MicIcon({ muted }: { muted: boolean }) {
+export function MicIcon({ muted }: { muted: boolean }) {
   return muted ? (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="1" x2="23" y1="1" y2="23" />
@@ -103,7 +105,7 @@ function LeaveIcon() {
   );
 }
 
-export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false, screenShareDisabled = false, hovered = false, onToggleMic, onToggleCamera, onToggleScreenShare }: ControlBarProps) {
+export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false, screenShareDisabled = false, hovered = false, chatOpen = false, onToggleMic, onToggleCamera, onToggleScreenShare, onToggleChat }: ControlBarProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showScreenShareConfirm, setShowScreenShareConfirm] = useState(false);
 
@@ -142,7 +144,7 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
       >
         <div
           className="flex items-center gap-2 rounded-full backdrop-blur-xl px-3 py-2 shadow-lg border border-white/40 transition-colors"
-          style={{ backgroundColor: hovered ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.55)" }}
+          style={{ backgroundColor: hovered ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.30)" }}
         >
         <motion.button
           whileTap={{ scale: 0.93 }}
@@ -175,7 +177,8 @@ export function ControlBar({ onLeave, micMuted, cameraOff, screenSharing = false
 
         <motion.button
           whileTap={{ scale: 0.93 }}
-          className={iconButtonClass}
+          onClick={onToggleChat}
+          className={chatOpen ? activeButtonClass : iconButtonClass}
           title="Chat"
         >
           <ChatIcon unread={false} />
